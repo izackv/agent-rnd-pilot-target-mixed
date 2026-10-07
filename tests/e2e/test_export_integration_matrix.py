@@ -319,6 +319,8 @@ def test_declared_encoding_and_media_type_on_both_surfaces(page: Page, fx_server
     _, browser_body = _click_export(page)
     headers, api_body = _api_export(fx_server, None)
     assert headers["content-type"] == "text/csv; charset=utf-8"
+    assert headers["cache-control"] == "no-store"  # A1 (rev 4 addendum)
+    assert headers["vary"] == "X-Role"  # A1: shared caches must key reuse on X-Role
     api_text = api_body.decode("utf-8", "strict")
     assert browser_body.decode("utf-8-sig") == api_text
 
