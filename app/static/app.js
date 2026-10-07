@@ -15,5 +15,30 @@ async function load() {
   }
   status.textContent = rows.length ? `${rows.length} reports` : "No reports";
 }
+async function exportCSV() {
+  const role = document.getElementById("role").value;
+  const status = document.getElementById("status");
+  status.textContent = "Exporting…";
+  try {
+    const res = await fetch("/api/reports/export", { headers: { "X-Role": role } });
+    if (!res.ok) { status.textContent = `Error ${res.status}`; return; }
+    const m = (res.headers.get("Content-Disposition") || "").match(/^attachment; filename="([^"]*)"$/);
+    if (!m) { status.textContent = "Export failed"; return; }
+    const name = m[1];
+    const blob = new Blob(["\uFEFF", await res.arrayBuffer()], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    status.textContent = `Exported ${name}`;
+  } catch {
+    status.textContent = "Export failed";
+  }
+}
 document.getElementById("role").addEventListener("change", load);
+document.getElementById("export-csv").addEventListener("click", exportCSV);
 load();
