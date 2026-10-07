@@ -36,18 +36,24 @@ def api_reports(x_role: str | None = Header(default=None)) -> list[dict]:
 
 @app.get("/api/reports/export")
 def api_reports_export(x_role: str | None = Header(default=None)) -> Response:
-    """CSV download of every report the caller's role may see (contract C1-C5, C7).
+    """CSV download of every report the caller's role may see (contract C1-C5, C7, A1).
 
     Registered before ``/api/reports/{report_id}`` so the static path is matched
     first and ``export`` is never consumed by the int route (C1). The role and
     the permitted set come from the one existing path, reused verbatim (C3).
+    Every 200 carries the A1 cache directives: the body is role-filtered (C3),
+    so a URL-keyed shared cache must neither store it nor reuse it across roles.
     """
     body = render_csv(data.list_reports(_role(x_role)))
     date = datetime.now(UTC).date().strftime("%Y-%m-%d")
     return Response(
         content=body,
         media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="reports-{date}.csv"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="reports-{date}.csv"',
+            "Cache-Control": "no-store",
+            "Vary": "X-Role",
+        },
     )
 
 
