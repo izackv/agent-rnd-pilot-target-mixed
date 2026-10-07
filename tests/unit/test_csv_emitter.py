@@ -104,7 +104,7 @@ def test_text_lookalikes_are_text():
         ("1-1", "1-1"),  # v[0]="1" not in T verbatim
         (",", '","'),
         ('=a,"b"', '"\'=a,""b"""'),  # prefix inserted BEFORE quoting (C4)
-        ("=1,2", "\"'=1,2\""),  # formula lead + comma: quoted and prefixed
+        ("=1,2", '"\'=1,2"'),  # formula lead + comma: quoted and prefixed
         ("plain", "plain"),
         ("", ""),
         ("-", "'-"),  # sole trigger char still counts

@@ -105,9 +105,7 @@ def test_header_line_is_the_first_21_bytes_for_every_role(role):
 
 def test_viewer_body_bytes_are_the_permitted_set_only():
     assert client.get(URL).content == HEADER + (
-        b"1,Monthly usage,ops,1200\r\n"
-        b"2,Error budget,sre,48\r\n"
-        b"4,Signup funnel,growth,5200\r\n"
+        b"1,Monthly usage,ops,1200\r\n2,Error budget,sre,48\r\n4,Signup funnel,growth,5200\r\n"
     )
 
 
@@ -152,12 +150,8 @@ def test_export_parity_with_list_endpoint(role):
 
 def test_duplicated_x_role_first_occurrence_decides():
     # C1 §duplicates: Starlette's lookup feeds _role the first occurrence.
-    viewer_first = client.get(
-        URL, headers=[("X-Role", "viewer"), ("X-Role", "admin")]
-    ).content
-    admin_first = client.get(
-        URL, headers=[("X-Role", "admin"), ("X-Role", "viewer")]
-    ).content
+    viewer_first = client.get(URL, headers=[("X-Role", "viewer"), ("X-Role", "admin")]).content
+    admin_first = client.get(URL, headers=[("X-Role", "admin"), ("X-Role", "viewer")]).content
     assert get_ids(viewer_first) == BUILTIN_VIEWER_IDS
     assert get_ids(admin_first) == BUILTIN_ADMIN_IDS
 
@@ -168,9 +162,10 @@ def test_duplicated_x_role_first_occurrence_decides():
 )
 def test_query_params_never_widen_narrow_or_reorder(probe):
     assert client.get(URL + probe).content == client.get(URL).content
-    assert client.get(URL + probe, headers={"X-Role": "admin"}).content == client.get(
-        URL, headers={"X-Role": "admin"}
-    ).content
+    assert (
+        client.get(URL + probe, headers={"X-Role": "admin"}).content
+        == client.get(URL, headers={"X-Role": "admin"}).content
+    )
 
 
 def test_request_body_never_shadows_the_header():

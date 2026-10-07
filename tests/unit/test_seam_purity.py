@@ -34,9 +34,7 @@ def test_fixture_env_var_lives_only_under_tests():
 
 def test_no_module_name_binds_reports_list():
     pattern = re.compile(r"from\s+app\.data\s+import\s+.*\b_REPORTS\b")
-    offenders = [
-        p for p in _source_files() if p.suffix == ".py" and pattern.search(p.read_text())
-    ]
+    offenders = [p for p in _source_files() if p.suffix == ".py" and pattern.search(p.read_text())]
     assert offenders == [], f"_REPORTS name-bound in {offenders}"
 
 
