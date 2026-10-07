@@ -1,0 +1,6 @@
+[
+  {"id": 1, "title": "Café — naïve ☃", "owner": "ops", "rows": 1200, "restricted": false},
+  {"id": 2, "title": "=SUM(A1)", "owner": "Ωmega", "rows": 48, "restricted": false},
+  {"id": 3, "title": "Payroll summary", "owner": "finance", "rows": 310, "restricted": true},
+  {"id": 4, "title": "日本語テスト", "owner": "a, =b", "rows": 5200, "restricted": false}
+]

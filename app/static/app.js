@@ -22,8 +22,9 @@ async function exportCSV() {
   try {
     const res = await fetch("/api/reports/export", { headers: { "X-Role": role } });
     if (!res.ok) { status.textContent = `Error ${res.status}`; return; }
-    const m = (res.headers.get("Content-Disposition") || "").match(/filename="([^"]*)"/);
-    const name = m ? m[1] : "reports.csv";
+    const m = (res.headers.get("Content-Disposition") || "").match(/^attachment; filename="([^"]*)"$/);
+    if (!m) { status.textContent = "Export failed"; return; }
+    const name = m[1];
     const blob = new Blob(["\uFEFF", await res.arrayBuffer()], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

@@ -27,6 +27,10 @@ from playwright.sync_api import Page, expect
 BOM = b"\xef\xbb\xbf"
 CD_RE = re.compile(r'^attachment; filename="(reports-\d{4}-\d{2}-\d{2}\.csv)"$')  # C7
 STUB_APP = "tests.e2e.export_stub_app:app"
+# MIX-23 A4: same ids/restricted flags as the built-in set, but non-ASCII + neutralisation
+# cells, so the C4 byte-parity assertions run over multi-byte bytes now and after the MIX-12
+# retarget keeps launching via the same C6-B seam (the gate's non-blocking tripwire ask).
+FIXTURE_J1 = Path(__file__).parent / "reports_j1_fixture.json"
 
 
 def _free_port() -> int:
@@ -56,7 +60,7 @@ def _spawn(extra_env: dict[str, str] | None = None) -> tuple[subprocess.Popen, s
 
 @pytest.fixture(scope="module")
 def stub() -> str:
-    proc, url = _spawn()
+    proc, url = _spawn({"REPORTS_FIXTURE_FILE": str(FIXTURE_J1)})
     yield url
     proc.terminate()
     proc.wait(timeout=10)
@@ -168,3 +172,43 @@ def test_empty_permitted_set_downloads_header_only(page: Page, tmp_path: Path):
     finally:
         proc.terminate()
         proc.wait(timeout=10)
+
+
+@pytest.mark.parametrize(
+    "disposition",
+    [
+        None,  # header absent
+        "attachment; filename=reports-2026-10-07.csv",  # unquoted filename parameter
+        "attachment; filename*=UTF-8''reports-2026-10-07.csv",  # extended form only
+    ],
+    ids=["absent", "unquoted", "extended-only"],
+)
+def test_off_contract_200_fails_closed(page: Page, stub: str, disposition):
+    # MIX-23 A2/A3: C1 forbids a client-computed name, so an off-contract 200 carrying no
+    # parseable quoted filename must not download and must surface the existing failure string.
+    downloads: list = []
+    page.on("download", lambda d: downloads.append(d))
+    page.goto(stub + "/")
+    expect(page.locator("#reports tbody tr")).to_have_count(3)
+    headers = {"Content-Type": "text/csv"}
+    if disposition is not None:
+        headers["Content-Disposition"] = disposition
+    page.route(
+        stub + "/api/reports/export",
+        lambda route: route.fulfill(status=200, body="id,title,owner,rows\r\n", headers=headers),
+    )
+    page.get_by_role("button", name="Export CSV").click()
+    expect(page.locator("#status")).to_have_text("Export failed")
+    page.wait_for_timeout(250)
+    assert downloads == []
+
+
+def test_j1_fixture_cells_cover_multibyte_and_neutralisation(stub: str):
+    # MIX-23 A4 tripwire: proves the module stub booted from reports_j1_fixture.json, i.e. the
+    # J1 byte-parity assertion above covers multi-byte and neutralisation-interaction bytes.
+    _, api_body = _api_export(stub, "admin")
+    assert "Café — naïve ☃".encode() in api_body
+    assert "日本語テスト".encode() in api_body
+    assert "Ωmega".encode() in api_body
+    assert b"'=SUM(A1)" in api_body  # C4 ¶5: '='-lead neutralised with a leading apostrophe
+    assert b'"a, =b"' in api_body  # C4 ¶1: comma cell minimally quoted (RFC 4180)
