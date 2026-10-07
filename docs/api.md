@@ -50,6 +50,16 @@ clause numbers (traceability table: contract C8).
   `browser_file_bytes == b"\xef\xbb\xbf" + api_file_bytes` (C4). The emitter never truncates
   (C2).
 
+### Consumer behaviour notes (contract rev 3 C2/C4)
+
+Numeric-look-alike text (`00123`, `1E+3`) is emitted verbatim and unquoted, and cells are never
+truncated (C2 value-blind typing; C4 minimal quoting), so the file bytes are contract-exact in
+both cases. Spreadsheet consumers, however, type-sniff such cells on import and clamp long ones:
+numeric-look-alike text renders as a number in Excel/Sheets/Calc (**F1**), and a 32 768-char cell
+is held by the consumer as 32 767 chars while the file keeps the full value (**F2**). The board
+recorded F1 and F2 as **accepted consumer behaviour, not contract gaps** (MIX-14 sign-off rev 3,
+§5 disposition) — no product change is implied by either.
+
 ### Permissions (C3)
 
 The endpoint reuses exactly the same role resolution and listing code as `GET /api/reports`
@@ -103,5 +113,5 @@ below is a contract violation:
 | J-01 | Viewer opens the reports page and sees permitted reports; admin sees the restricted one too | `tests/e2e/test_journey.py` |
 | J-02 | Browser export, viewer (contract J1): clicking **Export CSV** downloads the permitted set minus the restricted report, with the server-stated filename reused unchanged | `tests/e2e/test_export_journey.py` |
 | J-03 | Browser export, admin (contract J2): the export request carries the selector's `X-Role: admin` verbatim and the file additionally contains the restricted report | `tests/e2e/test_export_journey.py` |
-| J-04 | API export × role matrix and request shapes (contract J3): every canonical/variant response matches the table above, and no parameter or header variant widens the set beyond the header-only baseline | `tests/integration/test_csv_export.py` (browser legs in `tests/e2e/test_export_journey.py`) |
-| J-05 | Restricted report never appears (contract J4): no row and no cell contains it for viewer/absent/unknown/`ADMIN` treatments on either surface; permanent regression test with a non-vacuous admin positive control | `tests/integration/test_csv_export.py`, `tests/e2e/test_export_journey.py` |
+| J-04 | API export × role matrix and request shapes (contract J3): every canonical/variant response matches the table above, and no parameter or header variant widens the set beyond the header-only baseline | `tests/integration/test_csv_export.py` (browser-side matrix-parity legs in `tests/e2e/test_export_integration_matrix.py`) |
+| J-05 | Restricted report never appears (contract J4): no row and no cell contains it for viewer/absent/unknown/`ADMIN` treatments on either surface; permanent regression test with a non-vacuous admin positive control | `tests/integration/test_csv_export.py`, `tests/e2e/test_export_integration_matrix.py` (browser cells T1–T4, positive control and tripwire; the composed-branch legs — adversarial-corpus fidelity, C4 byte vectors, cross-surface BOM mechanics, repeated downloads — also live there) |
