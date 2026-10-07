@@ -15,15 +15,18 @@ authentication, chosen so permission paths can be tested without an identity pro
 `GET /api/reports/export` — exactly one URL, no path/query/body parameters and no alias
 (e.g. no `/export.csv`); a request body is accepted but ignored (C1). The route is registered
 before `/api/reports/{report_id}`, so a canonical GET is never swallowed by the int route (C1).
-This section equals the frozen CSV export contract **rev 3**; the ids in parentheses are its
-clause numbers (traceability table: contract C8).
+This section equals the frozen CSV export contract **rev 3**, extended only by addendum clause
+**A1** (export cache directives), forming **rev 4**; the ids in parentheses are its clause
+numbers (traceability table: contract C8).
 
-### Response headers (C1, C7)
+### Response headers (C1, A1, C7)
 
 | Header | Value |
 |---|---|
 | `Content-Type` | `text/csv; charset=utf-8`. No content negotiation: `Accept` never changes status, media type or bytes (C1). |
 | `Content-Disposition` | `attachment; filename="reports-YYYY-MM-DD.csv"` — the UTC calendar date when the response is generated, in one server-side statement. The name derives only from that constant and the server clock: never from report data or client input, and the role never appears in it. The fixed shape excludes CR, LF, quotes and backslashes, which is what closes the header-injection surface (C7). Browser downloads reuse the server-stated name; client-side code never computes its own (C1). |
+| `Cache-Control` | `no-store` — exact literal, on every 200. The body is role-filtered (C3) but the URL is unique with no cache-visible variant (C1), so a URL-keyed shared cache (proxy, CDN, browser) could otherwise serve one role's CSV to another; forbidding storage closes that path (A1). |
+| `Vary` | `X-Role` — exact literal, on every 200. Keys any correct reuse on the one header that decides the body; `Accept` is deliberately not named because C1 forbids content negotiation. Both values are handler-side constants, never derived from request or report data, so neither adds an injection surface (A1). |
 
 ### File contents (C2, C4)
 

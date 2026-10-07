@@ -3,7 +3,8 @@
 Traced clauses: C1 (endpoint/headers/route order), C2 (schema bytes, order),
 C3 (permission parity + matrix, SECURITY-RELEVANT), C4 (BOM-free UTF-8 on the
 API path), C5 (error cases + shape table), C6 Layer A seam (empty and hostile
-seeds), C7 (header-injection regex).
+seeds), C7 (header-injection regex), A1 (contract rev 4 addendum: export cache
+directives, SECURITY-RELEVANT).
 
 J3 = role matrix incl. case variants and the C3 probes.
 J4 = restricted never appears, asserted STRUCTURALLY (stdlib csv parse,
@@ -53,6 +54,8 @@ def test_canonical_get_is_200_csv_with_exact_headers():
     assert r.status_code == 200
     assert r.headers["content-type"] == "text/csv; charset=utf-8"
     assert r.headers["content-disposition"] == expected_disposition()
+    assert r.headers["cache-control"] == "no-store"  # A1
+    assert r.headers["vary"] == "X-Role"  # A1
     assert parse(r.content)[0] == ["id", "title", "owner", "rows"]
 
 
@@ -70,6 +73,44 @@ def test_api_bytes_are_pure_utf8_without_bom():
     assert not body.startswith(b"\xef\xbb\xbf")
     assert not body.decode("utf-8").startswith("\ufeff")
     body.decode("utf-8", "strict")  # C4 §2: decodes with no replacement chars
+
+
+# --- A1: export cache directives (contract rev 4, SECURITY-RELEVANT) -----------
+
+# The 200 body is permission-filtered by X-Role (C3) on one URL (C1), so every
+# 200 must carry both fixed-literal headers or a URL-keyed shared cache could
+# serve one role's CSV to another. Asserted at the HTTP level on each variant
+# the permission matrix uses for admin vs viewer visibility, plus the empty set.
+
+
+@pytest.mark.parametrize("role", [None, "viewer", "admin"])
+def test_all_200_export_variants_carry_no_store_and_vary(role):
+    hs = {} if role is None else {"X-Role": role}
+    r = client.get(URL, headers=hs)
+    assert r.status_code == 200
+    assert r.headers["cache-control"] == "no-store"
+    assert r.headers["vary"] == "X-Role"
+
+
+def test_viewer_and_admin_successes_carry_both_headers_side_by_side():
+    viewer = client.get(URL, headers={"X-Role": "viewer"})
+    admin = client.get(URL, headers={"X-Role": "admin"})
+    assert viewer.status_code == admin.status_code == 200
+    assert viewer.headers["cache-control"] == admin.headers["cache-control"] == "no-store"
+    assert viewer.headers["vary"] == admin.headers["vary"] == "X-Role"
+    assert get_ids(viewer.content) == BUILTIN_VIEWER_IDS  # both still role-filtered (C3)
+    assert get_ids(admin.content) == BUILTIN_ADMIN_IDS
+
+
+def test_empty_result_set_still_200_csv_with_both_headers(seeded_reports):
+    seeded_reports([])  # viewer-visible set is empty: still a 200 CSV, headers intact
+    for hs in [{}, {"X-Role": "viewer"}, {"X-Role": "admin"}]:
+        r = client.get(URL, headers=hs)
+        assert r.status_code == 200
+        assert r.headers["content-type"] == "text/csv; charset=utf-8"
+        assert r.content == HEADER  # 21-byte header-only body
+        assert r.headers["cache-control"] == "no-store"
+        assert r.headers["vary"] == "X-Role"
 
 
 # --- C1/C7: Content-Disposition can carry nothing hostile ----------------------
