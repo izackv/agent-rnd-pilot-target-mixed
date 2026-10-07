@@ -89,7 +89,7 @@ def _table_ids(page: Page) -> list[str]:
 
 
 def _rows(body: bytes) -> list[list[str]]:
-    return list(csv.reader(io.StringIO(body[len(BOM):].decode("utf-8"))))
+    return list(csv.reader(io.StringIO(body[len(BOM) :].decode("utf-8"))))
 
 
 def test_j1_viewer_export_matches_parity_set(page: Page, stub: str):
