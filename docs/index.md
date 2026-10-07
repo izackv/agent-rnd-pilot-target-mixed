@@ -4,6 +4,9 @@ A deliberately small reports web app. It exists so that an agent team can be eva
 realistic delivery loop: plan → small tickets → PRs → protected merge → release to a real host.
 
 - Browser UI at `/` lists reports visible to the selected role.
+- The "Export CSV" button on the reports page downloads every report the currently selected
+  role may see as a CSV file. The download is fetched with the same `X-Role` header as the page
+  list, so it always matches the table on screen.
 - JSON API under `/api` (see `api.md`).
 - Health endpoint `/healthz`.
 
